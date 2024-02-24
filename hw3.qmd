@@ -30,6 +30,7 @@ library(readr)
 library(tidyr)
 library(dplyr)
 library(purrr)
+library(broom)
 library(car)
 library(glmnet)
 ```
@@ -129,8 +130,8 @@ Equivalently, R has a function called `t.test()` which enables you to perform a 
 Perform a two-sample t-test to compare the quality of white and red wines using the `t.test()` function with the setting `var.equal=TRUE`. Store the t-statistic in `t2`.
 
 ```{R}
-t_test <- t.test(...) # Insert your code here
-t2 <- ... # Insert your code here
+t_test <- t.test(quality ~ type, data=df, var.equal=TRUE) 
+t2 <- t_test$statistic
 ```
 
 ---
@@ -140,8 +141,9 @@ t2 <- ... # Insert your code here
 Fit a linear regression model to predict `quality` from `type` using the `lm()` function, and extract the $t$-statistic for the `type` coefficient from the model summary. Store this $t$-statistic in `t3`.
 
 ```{R}
-fit <- lm(...) # Insert your here
-t3 <- ... # Insert your here
+fit <- lm(quality ~ type, data=df) 
+summary_fit <- summary(fit)
+t3 <- summary_fit$coefficients["typewhite", "t value"]
 ```
 
 
@@ -151,8 +153,8 @@ t3 <- ... # Insert your here
 
 Print a vector containing the values of `t1`, `t2`, and `t3`. What can you conclude from this? Why?
 
-```R
-c(t1, t2, t3) # Insert your code here
+```{R}
+c(t1=t1, t2=t2, t3=t3)
 ```
 
 
@@ -175,9 +177,13 @@ Collinearity
 
 Fit a linear regression model with all predictors against the response variable `quality`. Use the `broom::tidy()` function to print a summary of the fitted model. What can we conclude from the model summary?
 
+The model reveals several predictors with statistically significant effects on wine quality, including volatile acidity, residual sugar, chlorides, density, pH, sulphates, alcohol, and the type of wine. These findings can inform winemakers and marketers about the physicochemical properties that most significantly impact wine quality from a statistical standpoint.
 
-```R
-... # Insert your code here
+
+```{R}
+model <- lm(quality ~ ., data = df)
+model_summary <- tidy(model)
+print(model_summary)
 ```
 
 
@@ -187,13 +193,21 @@ Fit a linear regression model with all predictors against the response variable 
 
 Fit two **simple** linear regression models using `lm()`: one with only `citric_acid` as the predictor, and another with only `total_sulfur_dioxide` as the predictor. In both models, use `quality` as the response variable. How does your model summary compare to the summary from the previous question?
 
+-Citric_acid became significant only in the simple model, whereas total_sulfur_dioxide showed a small but significant effect in both contexts.
 
-```R
-model_citric <- ... # Insert your code here
+-Predictors that seem insignificant in a complex model may reveal significant effects when isolated, possibly due to interactions with or adjustments for other variables in the model.
+
+ -Predictive Power: Both simple models have very low $R^2$ values, indicating that neither citric_acid nor total_sulfur_dioxide are strong predictors of quality by themselves.
+
+
+```{R}
+model_citric <-lm(quality ~ citric_acid, data = df)
+summary(model_citric)
 ```
 
-```R
-model_sulfur <- ... # Insert your code here
+```{R}
+model_sulfur <- lm(quality ~ total_sulfur_dioxide, data = df)
+summary(model_sulfur)
 ```
 
 
@@ -203,7 +217,7 @@ model_sulfur <- ... # Insert your code here
 
 Visualize the correlation matrix of all numeric columns in `df` using `corrplot()`
 
-```R
+```{R}
 df %>% ... # Insert your code here
 ```
 
@@ -216,7 +230,7 @@ df %>% ... # Insert your code here
 Compute the variance inflation factor (VIF) for each predictor in the full model using `vif()` function. What can we conclude from this?
 
 
-```R
+```{R}
 ... # Insert your code here
 ```
 
