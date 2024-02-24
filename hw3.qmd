@@ -1,6 +1,6 @@
 ---
 title: "Homework 3"
-author: "[Insert your name here]{style='background-color: yellow;'}"
+author: "[Ahmed Alzarooni]{style='background-color: yellow;'}"
 toc: true
 title-block-banner: true
 title-block-style: default
@@ -25,7 +25,7 @@ For this assignment, we will be using the [Wine Quality](https://archive.ics.uci
 
 We will be using the following libraries:
 
-```R
+```{R}
 library(readr)
 library(tidyr)
 library(dplyr)
@@ -47,14 +47,14 @@ Regression with categorical covariate and $t$-Test
 
 Read the wine quality datasets from the specified URLs and store them in data frames `df1` and `df2`.
 
-```R
+```{R}
 url1 <- "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-white.csv"
 
 url2 <- "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
 
 
-df1 <- ... # Insert your code here
-df2 <- ... # Insert your code here
+df1 <- read.csv(url1, sep = ";")
+df2 <- read.csv(url2, sep = ";")
 ```
 
 ---
@@ -70,8 +70,16 @@ Perform the following tasks to prepare the data frame `df` for analysis:
 1. Remove rows (if any) with missing values.
 
 
-```R
-df <- ... # Insert your code here
+```{R}
+df <- bind_rows(
+  mutate(df1, type = "white"),  # Add 'type' column to df1
+  mutate(df2, type = "red")     # Add 'type' column to df2
+) 
+df <- df %>%
+  rename_with(~ gsub("\\.", "_", .x)) %>%  # Correctly rename columns to replace periods with underscores
+  select(-fixed_acidity, -free_sulfur_dioxide) %>%  # Now correctly reference updated column names
+  mutate(type = as.factor(type)) %>%
+  drop_na()
 ```
 
 
@@ -95,10 +103,20 @@ Recall from STAT 200, the method to compute the $t$ statistic for the the differ
 3. Using `sp_squared` and `diff_mean`, compute the $t$ Statistic, and store its value in a variable called `t1`.
 
 
-```R
-diff_mean <- ... # Insert your code here
-sp <-  ... # Insert your code here
-t1 <-  ... # Insert your code here
+```{R}
+
+mean_white = mean(df$quality[df$type == 'white'])
+mean_red = mean(df$quality[df$type == 'red'])
+
+diff_mean <- mean_white - mean_red
+
+n_white = sum(df$type == 'white')  # Sample size for white wine
+n_red = sum(df$type == 'red')  # Sample size for red wine
+var_white = var(df$quality[df$type == 'white'])  # Variance for white wine
+var_red = var(df$quality[df$type == 'red'])  # Variance for red wine
+sp <- ((n_white - 1) * var_white + (n_red - 1) * var_red) / (n_white + n_red - 2)
+
+t1 <- diff_mean / sqrt(sp * (1/n_white + 1/n_red))
 ```
 
 
@@ -110,7 +128,7 @@ Equivalently, R has a function called `t.test()` which enables you to perform a 
 
 Perform a two-sample t-test to compare the quality of white and red wines using the `t.test()` function with the setting `var.equal=TRUE`. Store the t-statistic in `t2`.
 
-```R
+```{R}
 t_test <- t.test(...) # Insert your code here
 t2 <- ... # Insert your code here
 ```
@@ -121,7 +139,7 @@ t2 <- ... # Insert your code here
 
 Fit a linear regression model to predict `quality` from `type` using the `lm()` function, and extract the $t$-statistic for the `type` coefficient from the model summary. Store this $t$-statistic in `t3`.
 
-```R
+```{R}
 fit <- lm(...) # Insert your here
 t3 <- ... # Insert your here
 ```
