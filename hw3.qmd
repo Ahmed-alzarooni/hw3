@@ -31,7 +31,9 @@ library(tidyr)
 library(dplyr)
 library(purrr)
 library(broom)
+library(corrplot)
 library(car)
+library(stats)
 library(glmnet)
 ```
 
@@ -218,7 +220,9 @@ summary(model_sulfur)
 Visualize the correlation matrix of all numeric columns in `df` using `corrplot()`
 
 ```{R}
-df %>% ... # Insert your code here
+df %>% select(where(is.numeric)) %>% 
+  cor() %>% 
+  corrplot(method = "circle")
 ```
 
 
@@ -229,9 +233,13 @@ df %>% ... # Insert your code here
 
 Compute the variance inflation factor (VIF) for each predictor in the full model using `vif()` function. What can we conclude from this?
 
+The model indicates potential multicollinearity issues, particularly with Density and Type
 
 ```{R}
-... # Insert your code here
+full_model <- lm(quality ~ ., data = df)
+vif_values <- vif(full_model)
+print(vif_values)
+
 ```
 
 
@@ -254,8 +262,12 @@ Variable selection
 
 Run a backward stepwise regression using a `full_model` object as the starting model. Store the final formula in an object called `backward_formula` using the built-in `formula()` function in R
 
-```R
-... # Insert your code here
+```{R}
+final_model <- step(full_model, direction = "backward")
+backward_formula <- formula(final_model)
+print(backward_formula)
+
+
 ```
 
 ---
@@ -264,8 +276,13 @@ Run a backward stepwise regression using a `full_model` object as the starting m
 
 Run a forward stepwise regression using a `null_model` object as the starting model. Store the final formula in an object called `forward_formula` using the built-in `formula()` function in R
 
-```R
-... # Insert your code here
+```{R}
+null_model <- lm(quality ~ 1, data = df)
+final_model <- step(null_model, direction = "forward", scope = list(lower = null_model, upper = lm(quality ~ ., data = df)))
+forward_formula <- formula(final_model)
+print(forward_formula)
+
+
 ```
 
 
@@ -280,15 +297,24 @@ Run a forward stepwise regression using a `null_model` object as the starting mo
 
 3. Then, use the `cv.glmnet()` function to perform LASSO and Ridge regression with `X` and `y`.
 
-```R
-... # Insert your code here. 
+```{R}
+y <- df$quality
+X <- model.matrix(~ . - quality, data = df)
+
+lasso_model <- cv.glmnet(X, y, alpha = 1)
+ridge_model <- cv.glmnet(X, y, alpha = 0)
+
 ```
 
 Create side-by-side plots of the ridge and LASSO regression results. Interpret your main findings. 
 
-```R
+```{R}
 par(mfrow=c(1, 2))
-... # Insert your code here. 
+plot(ridge_model, xvar = "lambda", label = TRUE)
+title("Ridge Regression")
+
+plot(lasso_model, xvar = "lambda", label = TRUE)
+title("LASSO Regression")
 ```
 
 ---
@@ -296,18 +322,41 @@ par(mfrow=c(1, 2))
 ###### 3.4  (5 points)
 
 Print the coefficient values for LASSO regression at the `lambda.1se` value? What are the variables selected by LASSO? 
+```{R}
+coef_lasso_1se <- coef(lasso_model, s = "lambda.1se")
+print(coef_lasso_1se)
+```
 
 Store the variable names with non-zero coefficients in `lasso_vars`, and create a formula object called `lasso_formula` using the `make_formula()` function provided in the Appendix. 
+```{r}
+non_zero_coef <- coef_lasso_1se[coef_lasso_1se[, 1] != 0, , drop = FALSE]
+lasso_vars <- rownames(non_zero_coef)[-1] 
+predictor_str <- paste(lasso_vars, collapse = " + ")
+lasso_formula_str <- paste("quality ~", predictor_str)
+lasso_formula <- as.formula(lasso_formula_str)
+print(lasso_formula)
 
+```
 
 ---
 
 ###### 3.5  (5 points)
 
 Print the coefficient values for ridge regression at the `lambda.1se` value? What are the variables selected here? 
+```{r}
+coef_ridge_1se <- coef(ridge_model, s = "lambda.1se")
+print(coef_ridge_1se)
 
+```
 Store the variable names with non-zero coefficients in `ridge_vars`, and create a formula object called `ridge_formula` using the `make_formula()` function provided in the Appendix. 
+```{r}
+ridge_vars <- rownames(coef_ridge_1se)[-1]
+predictor_str <- paste(ridge_vars, collapse = " + ")
+ridge_formula_str <- paste("quality ~", predictor_str)
+ridge_formula <- as.formula(ridge_formula_str)
+print(ridge_formula)
 
+```
 
 
 ---
@@ -316,7 +365,7 @@ Store the variable names with non-zero coefficients in `ridge_vars`, and create 
 
 What is the difference between stepwise selection, LASSO and ridge based on you analyses above?
 
-
+Ridge does not perform variable selection by zeroing out coefficients as LASSO does
 
 
 
@@ -339,6 +388,9 @@ Variable selection
 
 Excluding `quality` from `df` we have $10$ possible predictors as the covariates. How many different models can we create using any subset of these $10$ coavriates as possible predictors? Justify your answer. 
 
+
+2^10=1024
+Since each predictor can either be included or excluded independently of the others, we have two choices (include or exclude) for each of the 10 predictors, leading to 2^10 total combinations.
 ---
 
 
@@ -346,7 +398,7 @@ Excluding `quality` from `df` we have $10$ possible predictors as the covariates
 
 Store the names of the predictor variables (all columns except `quality`) in an object called `x_vars`.
 
-```R
+```{R}
 x_vars <- colnames(df %>% select(-quality))
 ```
 
@@ -357,7 +409,7 @@ Use:
 
 to **generate all possible linear regression formulas** using the variables in `x_vars`. This is most optimally achieved using the `map()` function from the `purrr` package.
 
-```R
+```{R}
 formulas <- map(
   1:length(x_vars),
   \(x){
@@ -369,7 +421,7 @@ formulas <- map(
 
 If your code is right the following command should return something along the lines of:
 
-```R
+```{R}
 sample(formulas, 4) %>% as.character()
 # Output:
 # [1] "quality ~ volatile_acidity + residual_sugar + density + pH + alcohol"                                                 
